@@ -1,0 +1,16 @@
+[
+  {
+    "id": "f097d4ba-2a11-480d-a63a-316dd05f6b3c",
+    "title": "Add dark mode toggle",
+    "tags": [
+      "frontend",
+      "feature"
+    ],
+    "column": "todo",
+    "progress": 0,
+    "qaItems": [],
+    "createdAt": "2026-03-20T11:46:36.339Z",
+    "updatedAt": "2026-03-20T14:15:43.157Z",
+    "error": "Claude Code timeout after 120000ms"
+  }
+]
