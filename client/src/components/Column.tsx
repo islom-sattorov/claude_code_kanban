@@ -53,7 +53,7 @@ export function Column({ columnId, isActive }: Props) {
             <Card
               key={task.id}
               task={task}
-              isActive={task.id === agentTaskId || (task.column !== 'todo' && task.column !== 'done')}
+              isActive={task.id === agentTaskId}
             />
           ))
         )}
