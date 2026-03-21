@@ -65,7 +65,7 @@ export function Header() {
           <Zap className="w-4 h-4 text-white" />
         </div>
         <div>
-          <h1 className="text-lg font-bold text-white tracking-tight">AI Kanban</h1>
+          <h1 className="text-lg font-bold text-white tracking-tight">test</h1>
           <p className="text-xs text-dark-300">Autonomous Task Engine</p>
         </div>
       </div>
