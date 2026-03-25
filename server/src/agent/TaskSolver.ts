@@ -8,7 +8,7 @@ export interface SolverResult {
   rationale: string;
 }
 
-export async function solveTask(task: Task, cwd?: string): Promise<SolverResult> {
+export async function solveTask(task: Task, cwd?: string, onLog?: (line: string) => void): Promise<SolverResult> {
   const config = getConfig();
 
   const solvePrompt = `You are an autonomous developer agent. Your task is:
@@ -33,8 +33,8 @@ Do NOT include markdown fences. Output valid JSON only.`;
     cwd: cwd || config.repoPath,
     allowedTools: ['Read', 'Write', 'Edit', 'Bash(npm *)', 'Bash(git status)'],
     maxTurns: Number(process.env.CLAUDE_MAX_TURNS) || 10,
-    outputFormat: 'json',
     timeoutMs: Number(process.env.CLAUDE_TIMEOUT_MS) || 120000,
+    onLog,
   });
 
   let parsed: SolverResult;

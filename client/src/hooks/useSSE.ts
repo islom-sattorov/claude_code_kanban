@@ -1,11 +1,13 @@
 import { useEffect, useRef } from 'react';
 import { useBoardStore } from '../store/useBoardStore';
 import { useLogStore } from '../store/useLogStore';
+import { useProjectStore } from '../store/useProjectStore';
 import { Task, LogEntry } from '../../../shared/types';
 
 export function useSSE() {
   const { setTasks, addTask, updateTask, deleteTask, setAgentRunning } = useBoardStore();
   const { addEntry } = useLogStore();
+  const { fetchProjects } = useProjectStore();
   const eventSourceRef = useRef<EventSource | null>(null);
 
   useEffect(() => {
@@ -41,6 +43,9 @@ export function useSSE() {
               break;
             case 'log:entry':
               addEntry(payload as LogEntry);
+              break;
+            case 'project:cloned':
+              fetchProjects();
               break;
           }
         } catch (err) {

@@ -4,10 +4,10 @@ export interface ClaudeRunOptions {
   prompt: string;
   cwd: string;
   allowedTools?: string[];
-  outputFormat?: 'text' | 'json' | 'stream-json';
   maxTurns?: number;
   sessionId?: string;
   timeoutMs?: number;
+  onLog?: (line: string) => void;
 }
 
 export interface ClaudeRunResult {
@@ -17,8 +17,32 @@ export interface ClaudeRunResult {
   exitCode: number;
 }
 
+function formatStreamEvent(event: Record<string, unknown>): string | null {
+  const type = event.type as string;
+
+  if (type === 'assistant') {
+    const message = event.message as { content?: Array<{ type: string; text?: string }> } | undefined;
+    const textBlock = message?.content?.find(b => b.type === 'text');
+    if (textBlock?.text) return `[claude] ${textBlock.text.trim()}`;
+  }
+
+  if (type === 'tool_use') {
+    const toolName = (event.tool_name ?? (event as Record<string, unknown>).name) as string | undefined;
+    const input = event.tool_input ?? event.input;
+    const detail = input ? JSON.stringify(input).slice(0, 120) : '';
+    return `[tool] ${toolName ?? 'unknown'}${detail ? ` ${detail}` : ''}`;
+  }
+
+  if (type === 'system' && event.subtype === 'init') {
+    const tools = (event.tools as string[] | undefined) ?? [];
+    return `[init] tools: ${tools.join(', ')}`;
+  }
+
+  return null;
+}
+
 export async function runClaudeCode(opts: ClaudeRunOptions): Promise<ClaudeRunResult> {
-  const args: string[] = ['-p', opts.prompt, '--output-format', opts.outputFormat ?? 'json'];
+  const args: string[] = ['-p', opts.prompt, '--output-format', 'stream-json', '--verbose'];
 
   if (opts.maxTurns) args.push('--max-turns', String(opts.maxTurns));
   if (opts.sessionId) args.push('--session-id', opts.sessionId);
@@ -33,11 +57,50 @@ export async function runClaudeCode(opts: ClaudeRunOptions): Promise<ClaudeRunRe
       stdio: ['ignore', 'pipe', 'pipe'],
     });
 
-    let stdout = '';
+    let lineBuffer = '';
+    let resultEvent: ClaudeRunResult | null = null;
     let stderr = '';
 
-    proc.stdout.on('data', (d: Buffer) => { stdout += d.toString(); });
-    proc.stderr.on('data', (d: Buffer) => { stderr += d.toString(); });
+    proc.stdout.on('data', (d: Buffer) => {
+      lineBuffer += d.toString();
+      const lines = lineBuffer.split('\n');
+      lineBuffer = lines.pop() ?? '';
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+
+        try {
+          const event = JSON.parse(trimmed) as Record<string, unknown>;
+
+          // Capture the final result
+          if (event.type === 'result') {
+            resultEvent = {
+              result: (event.result as string) ?? '',
+              sessionId: (event.session_id as string) ?? '',
+              costUsd: (event as Record<string, unknown> & { usage?: { cost_usd?: number } }).usage?.cost_usd,
+              exitCode: 0,
+            };
+          }
+
+          // Forward formatted line to caller
+          if (opts.onLog) {
+            const formatted = formatStreamEvent(event);
+            if (formatted) opts.onLog(formatted);
+          }
+        } catch {
+          // non-JSON line — forward raw if caller wants it
+          if (opts.onLog && trimmed) opts.onLog(trimmed);
+        }
+      }
+    });
+
+    proc.stderr.on('data', (d: Buffer) => {
+      stderr += d.toString();
+      if (opts.onLog) {
+        d.toString().split('\n').forEach(l => { if (l.trim()) opts.onLog!(`[stderr] ${l.trim()}`); });
+      }
+    });
 
     const timer = setTimeout(() => {
       proc.kill();
@@ -49,27 +112,10 @@ export async function runClaudeCode(opts: ClaudeRunOptions): Promise<ClaudeRunRe
       if (code !== 0) {
         return reject(new Error(`Claude Code exited with code ${code}: ${stderr}`));
       }
-      try {
-        const parsed = JSON.parse(stdout);
-        resolve({
-          result: parsed.result ?? stdout,
-          sessionId: parsed.session_id ?? '',
-          costUsd: parsed.usage?.cost_usd,
-          exitCode: code,
-        });
-      } catch {
-        // Try to extract JSON
-        const match = stdout.match(/\{[\s\S]*\}/);
-        if (match) {
-          try {
-            const parsed = JSON.parse(match[0]);
-            resolve({ result: JSON.stringify(parsed), sessionId: '', exitCode: code });
-            return;
-          } catch {
-            // fall through
-          }
-        }
-        reject(new Error(`Failed to parse Claude Code output: ${stdout}`));
+      if (resultEvent) {
+        resolve({ ...resultEvent, exitCode: code });
+      } else {
+        reject(new Error('Claude Code stream ended without a result event'));
       }
     });
 

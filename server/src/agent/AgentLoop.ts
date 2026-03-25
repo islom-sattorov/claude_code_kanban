@@ -73,7 +73,7 @@ export async function processTask(taskId: string): Promise<void> {
       }
 
       log('info', `[${currentTask.title}] Calling Claude Code to solve task...`);
-      const solution = await solveTask(currentTask, projectCwd);
+      const solution = await solveTask(currentTask, projectCwd, (line) => log('info', line));
       log('success', `[${currentTask.title}] Solution generated: ${solution.filesChanged.join(', ')}`);
       log('info', `[${currentTask.title}] Commit message: ${solution.commitMessage}`);
 

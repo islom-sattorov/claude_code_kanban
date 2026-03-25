@@ -16,7 +16,7 @@ interface BoardState {
   setAgentRunning: (running: boolean, taskId?: string) => void;
 
   fetchTasks: (projectId?: string) => Promise<void>;
-  createTask: (data: { title: string; description?: string; tags?: string[]; projectId?: string }) => Promise<void>;
+  createTask: (data: { title: string; description?: string; tags?: string[]; projectId?: string }) => Promise<Task>;
   moveTask: (id: string, column: ColumnId) => Promise<void>;
   removeTask: (id: string) => Promise<void>;
   runTask: (id: string) => Promise<void>;
@@ -52,7 +52,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
   },
 
   createTask: async (data) => {
-    await tasksApi.create(data);
+    return tasksApi.create(data);
   },
 
   moveTask: async (id, column) => {

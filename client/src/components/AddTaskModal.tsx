@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Plus, Tag, FolderGit2, Play, AlertTriangle } from 'lucide-react';
+import { X, Plus, Tag, FolderGit2, AlertTriangle } from 'lucide-react';
 import { useBoardStore } from '../store/useBoardStore';
 import { useProjectStore } from '../store/useProjectStore';
 import clsx from 'clsx';
@@ -28,7 +28,6 @@ export function AddTaskModal({ onClose }: Props) {
   const [description, setDescription] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
-  const [runImmediately, setRunImmediately] = useState(false);
 
   const toggleTag = (tag: string) => {
     setSelectedTags(prev =>
@@ -41,24 +40,17 @@ export function AddTaskModal({ onClose }: Props) {
     if (!title.trim()) return;
     setLoading(true);
     try {
-      await createTask({
+      const newTask = await createTask({
         title: title.trim(),
         description: description.trim() || undefined,
         tags: selectedTags,
         projectId: activeProjectId ?? undefined,
       });
 
-      // If "Run immediately" is checked, get the last created task and run it
-      if (runImmediately) {
-        const { tasks } = useBoardStore.getState();
-        const newTask = tasks.find(t => t.title === title.trim() && t.column === 'todo');
-        if (newTask) {
-          try {
-            await runTask(newTask.id);
-          } catch (err) {
-            console.error('Failed to auto-run task:', err);
-          }
-        }
+      try {
+        await runTask(newTask.id);
+      } catch (err) {
+        console.error('Failed to auto-run task:', err);
       }
 
       onClose();
@@ -147,23 +139,6 @@ export function AddTaskModal({ onClose }: Props) {
             </div>
           </div>
 
-          {/* Run immediately checkbox */}
-          <label className="flex items-center gap-2.5 cursor-pointer group">
-            <div className={clsx(
-              'w-4 h-4 rounded border-2 flex items-center justify-center transition-colors',
-              runImmediately
-                ? 'bg-accent-purple border-accent-purple'
-                : 'border-dark-500 group-hover:border-dark-400'
-            )}>
-              {runImmediately && (
-                <Play className="w-2.5 h-2.5 text-white fill-white" />
-              )}
-            </div>
-            <span className="text-sm text-dark-300 group-hover:text-white transition-colors">
-              Run immediately after creating
-            </span>
-          </label>
-
           <div className="flex gap-3 pt-2">
             <button
               type="button"
@@ -178,7 +153,7 @@ export function AddTaskModal({ onClose }: Props) {
               className="btn-primary flex-1 px-4 py-2.5 text-sm flex items-center justify-center gap-2 disabled:opacity-50"
             >
               <Plus className="w-4 h-4" />
-              {runImmediately ? 'Add & Run' : 'Add Task'}
+              Add & Run
             </button>
           </div>
         </form>

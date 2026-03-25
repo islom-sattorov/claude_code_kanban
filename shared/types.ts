@@ -37,7 +37,8 @@ export type SSEEventType =
   | 'agent:start'
   | 'agent:stop'
   | 'agent:error'
-  | 'log:entry';
+  | 'log:entry'
+  | 'project:cloned';
 
 export interface SSEEvent {
   type: SSEEventType;
