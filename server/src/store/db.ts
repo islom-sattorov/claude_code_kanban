@@ -31,7 +31,6 @@ export async function initDb(): Promise<void> {
       tags        TEXT[]       NOT NULL DEFAULT '{}',
       column_name TEXT         NOT NULL DEFAULT 'todo',
       progress    INTEGER      NOT NULL DEFAULT 0,
-      qa_items    JSONB        NOT NULL DEFAULT '[]',
       project_id  TEXT         REFERENCES projects(id) ON DELETE SET NULL,
       pr_number   INTEGER,
       pr_url      TEXT,

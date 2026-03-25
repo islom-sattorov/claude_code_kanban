@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import {
-  Play, ExternalLink, CheckCircle, XCircle, Clock,
-  AlertTriangle, Trash2, ChevronDown, ChevronUp, GitMerge, RotateCcw
+  Play, ExternalLink,
+  AlertTriangle, Trash2, GitMerge, RotateCcw
 } from 'lucide-react';
-import { Task, QAItem } from '../../../shared/types';
+import { Task } from '../../../shared/types';
 import { useBoardStore } from '../store/useBoardStore';
 import clsx from 'clsx';
 
@@ -20,9 +20,7 @@ const TAG_COLORS: Record<string, string> = {
 
 const STATUS_BORDER_COLORS: Record<string, string> = {
   todo: 'border-l-dark-500',
-  in_progress: 'border-l-accent-blue',
   solving: 'border-l-accent-purple',
-  qa: 'border-l-accent-yellow',
   done: 'border-l-accent-green',
 };
 
@@ -31,35 +29,14 @@ interface Props {
   isActive: boolean;
 }
 
-function QAItemRow({ item }: { item: QAItem }) {
-  return (
-    <div className={clsx(
-      'flex items-start gap-2 text-xs py-1',
-      item.status === 'fail' ? 'text-red-400' : item.status === 'pass' ? 'text-green-400' : 'text-dark-300'
-    )}>
-      {item.status === 'pass' ? (
-        <CheckCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
-      ) : item.status === 'fail' ? (
-        <XCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
-      ) : (
-        <Clock className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
-      )}
-      <span>{item.label}</span>
-      {item.detail && <span className="text-dark-400 ml-1">-- {item.detail}</span>}
-    </div>
-  );
-}
 
 export function Card({ task, isActive }: Props) {
   const { runTask, removeTask, agentRunning } = useBoardStore();
-  const [showQA, setShowQA] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [showProgress, setShowProgress] = useState(false);
 
-  const isThinking = isActive && (task.column === 'solving' || task.column === 'qa');
-  const hasQA = task.qaItems.length > 0;
-  const failedQA = task.qaItems.filter(i => i.status === 'fail').length;
+  const isThinking = isActive && task.column === 'solving';
 
   const handleRun = async () => {
     try {
@@ -177,39 +154,6 @@ export function Card({ task, isActive }: Props) {
               {task.progress}%
             </span>
           )}
-        </div>
-      )}
-
-      {/* QA Checklist */}
-      {hasQA && (
-        <div>
-          <button
-            onClick={() => setShowQA(!showQA)}
-            className="flex items-center gap-1.5 text-xs text-dark-400 hover:text-white transition-colors w-full"
-          >
-            {failedQA > 0 ? (
-              <AlertTriangle className="w-3.5 h-3.5 text-yellow-400" />
-            ) : (
-              <CheckCircle className="w-3.5 h-3.5 text-green-400" />
-            )}
-            <span className={failedQA > 0 ? 'text-yellow-400' : 'text-green-400'}>
-              QA: {task.qaItems.filter(i => i.status === 'pass').length}/{task.qaItems.length} passed
-            </span>
-            {showQA ? <ChevronUp className="w-3 h-3 ml-auto" /> : <ChevronDown className="w-3 h-3 ml-auto" />}
-          </button>
-
-          <div
-            className={clsx(
-              'overflow-hidden transition-all duration-300 ease-spring',
-              showQA ? 'max-h-96 opacity-100 mt-2' : 'max-h-0 opacity-0'
-            )}
-          >
-            <div className="pl-1 border-l border-dark-500 space-y-0.5">
-              {task.qaItems.map(item => (
-                <QAItemRow key={item.id} item={item} />
-              ))}
-            </div>
-          </div>
         </div>
       )}
 

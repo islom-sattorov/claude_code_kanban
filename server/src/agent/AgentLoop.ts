@@ -4,7 +4,6 @@ import { projectStore } from '../store/projectStore';
 import { sseEmitter } from '../sse/sseEmitter';
 import { enqueueTask } from '../queue/taskQueue';
 import { solveTask } from './TaskSolver';
-import { runQA } from './QARunner';
 import { describePR } from './PRDescriber';
 import { createPR, parseGithubRepo } from '../services/githubService';
 import { commitAndPush, syncBase } from '../services/gitService';
@@ -66,69 +65,29 @@ export async function processTask(taskId: string): Promise<void> {
     }
 
     try {
-      // 1. Move to in_progress — pull latest base branch first
-      currentTask = await updateTask(currentTask, { column: 'in_progress', progress: 5 });
+      // 1. Move to solving — pull latest base branch first
+      currentTask = await updateTask(currentTask, { column: 'solving', progress: 20 });
       log('info', `[${currentTask.title}] Agent picked up task`);
       try { syncBase(projectCwd, projectBranch, projectRepoUrl); } catch (e) {
         log('warn', `[${currentTask.title}] Could not sync base branch: ${(e as Error).message}`);
       }
 
-      // 2. Move to solving
-      currentTask = await updateTask(currentTask, { column: 'solving', progress: 20 });
       log('info', `[${currentTask.title}] Calling Claude Code to solve task...`);
-
       const solution = await solveTask(currentTask, projectCwd);
       log('success', `[${currentTask.title}] Solution generated: ${solution.filesChanged.join(', ')}`);
       log('info', `[${currentTask.title}] Commit message: ${solution.commitMessage}`);
 
-      // 2b. Commit and push the changes Claude made to a feature branch
+      // 2. Commit and push the changes Claude made to a feature branch
       const branchName = `ai-kanban/${currentTask.id.slice(0, 8)}-${currentTask.title.toLowerCase().replace(/[^a-z0-9]/g, '-').slice(0, 40)}`;
       log('info', `[${currentTask.title}] Committing and pushing to branch: ${branchName}`);
       const pushedBranch = commitAndPush(branchName, solution.commitMessage, projectCwd, projectRepoUrl, projectBranch);
       log('success', `[${currentTask.title}] Pushed branch: ${pushedBranch}`);
 
-      currentTask = await updateTask(currentTask, { progress: 50 });
+      currentTask = await updateTask(currentTask, { progress: 60 });
 
-      // 3. Move to QA
-      currentTask = await updateTask(currentTask, { column: 'qa', progress: 50 });
-      log('info', `[${currentTask.title}] Starting QA checks...`);
-
-      const qaItems = await runQA(currentTask, solution.filesChanged, projectCwd);
-      currentTask = await updateTask(currentTask, {
-        qaItems: qaItems.map(item => ({ ...item })),
-        progress: 80,
-      });
-
-      qaItems.forEach(item => {
-        log(
-          item.status === 'pass' ? 'success' : 'error',
-          `[${currentTask.title}] QA: ${item.label} — ${item.status}${item.detail ? ` (${item.detail})` : ''}`
-        );
-      });
-
-      const failedItems = qaItems.filter(item => item.status === 'fail');
-      if (failedItems.length > 0) {
-        log('warn', `[${currentTask.title}] ${failedItems.length} QA item(s) failed. Attempting remediation...`);
-        // One retry attempt
-        const retryQA = await runQA(currentTask, solution.filesChanged, projectCwd);
-        const stillFailing = retryQA.filter(i => i.status === 'fail');
-        currentTask = await updateTask(currentTask, { qaItems: retryQA });
-        if (stillFailing.length > 0) {
-          log('error', `[${currentTask.title}] QA still failing after retry: ${stillFailing.map(i => i.label).join(', ')}`);
-          currentTask = await updateTask(currentTask, {
-            column: 'todo',
-            progress: 0,
-            error: `QA failed: ${stillFailing.map(i => i.label).join(', ')}`,
-          });
-          sseEmitter.broadcast({ type: 'agent:stop', payload: { taskId, status: 'qa_failed' } });
-          agentRunning = false;
-          return;
-        }
-      }
-
-      // 4. Create PR
+      // 3. Create PR
       log('info', `[${currentTask.title}] Generating PR description...`);
-      const prDesc = await describePR(currentTask, solution.filesChanged, solution.rationale, qaItems, projectCwd);
+      const prDesc = await describePR(currentTask, solution.filesChanged, solution.rationale, [], projectCwd);
 
       log('info', `[${currentTask.title}] Opening PR on GitHub...`);
 

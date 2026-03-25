@@ -11,7 +11,6 @@ function rowToTask(row: Record<string, unknown>): Task {
     tags:        row.tags as string[],
     column:      row.column_name as ColumnId,
     progress:    row.progress as number,
-    qaItems:     row.qa_items as Task['qaItems'],
     projectId:   row.project_id as string | undefined,
     prNumber:    row.pr_number as number | undefined,
     prUrl:       row.pr_url as string | undefined,
@@ -65,7 +64,6 @@ export const taskStore = {
     if (updates.tags        !== undefined) { fields.push(`tags = $${i++}`);        values.push(updates.tags); }
     if (updates.column      !== undefined) { fields.push(`column_name = $${i++}`); values.push(updates.column); }
     if (updates.progress    !== undefined) { fields.push(`progress = $${i++}`);    values.push(updates.progress); }
-    if (updates.qaItems     !== undefined) { fields.push(`qa_items = $${i++}`);    values.push(JSON.stringify(updates.qaItems)); }
     if (updates.prNumber    !== undefined) { fields.push(`pr_number = $${i++}`);   values.push(updates.prNumber); }
     if (updates.prUrl       !== undefined) { fields.push(`pr_url = $${i++}`);      values.push(updates.prUrl); }
     if ('error' in updates)               { fields.push(`error = $${i++}`);        values.push(updates.error ?? null); }

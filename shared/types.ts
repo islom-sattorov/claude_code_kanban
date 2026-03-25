@@ -1,11 +1,4 @@
-export type ColumnId = 'todo' | 'in_progress' | 'solving' | 'qa' | 'done';
-
-export interface QAItem {
-  id: string;
-  label: string;
-  status: 'pending' | 'pass' | 'fail';
-  detail?: string;
-}
+export type ColumnId = 'todo' | 'solving' | 'done';
 
 export interface Project {
   id: string;
@@ -24,7 +17,6 @@ export interface Task {
   tags: string[];
   column: ColumnId;
   progress: number; // 0-100
-  qaItems: QAItem[];
   projectId?: string;
   prNumber?: number;
   prUrl?: string;

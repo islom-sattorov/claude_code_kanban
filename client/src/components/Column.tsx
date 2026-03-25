@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  ClipboardList, Zap, Brain, Search, CheckCircle2, Inbox
+  ClipboardList, Brain, CheckCircle2, Inbox
 } from 'lucide-react';
 import { ColumnId } from '../../../shared/types';
 import { useBoardStore } from '../store/useBoardStore';
@@ -25,15 +25,6 @@ const COLUMN_META: Record<ColumnId, {
     emptyIcon: <Inbox className="w-8 h-8 text-dark-500" />,
     emptyText: 'Add tasks to get started',
   },
-  in_progress: {
-    label: 'In Progress',
-    icon: <Zap className="w-4 h-4" />,
-    accentColor: 'bg-accent-blue',
-    badgeBg: 'bg-accent-blue/15',
-    badgeText: 'text-accent-blue',
-    emptyIcon: <Zap className="w-8 h-8 text-dark-500" />,
-    emptyText: 'Tasks being picked up',
-  },
   solving: {
     label: 'Solving',
     icon: <Brain className="w-4 h-4" />,
@@ -42,15 +33,6 @@ const COLUMN_META: Record<ColumnId, {
     badgeText: 'text-accent-purple',
     emptyIcon: <Brain className="w-8 h-8 text-dark-500" />,
     emptyText: 'AI is working on it',
-  },
-  qa: {
-    label: 'QA',
-    icon: <Search className="w-4 h-4" />,
-    accentColor: 'bg-accent-yellow',
-    badgeBg: 'bg-accent-yellow/15',
-    badgeText: 'text-accent-yellow',
-    emptyIcon: <Search className="w-8 h-8 text-dark-500" />,
-    emptyText: 'Awaiting verification',
   },
   done: {
     label: 'Done',
@@ -65,9 +47,7 @@ const COLUMN_META: Record<ColumnId, {
 
 const COLUMN_GLOW: Record<ColumnId, string> = {
   todo: '',
-  in_progress: 'border-accent-blue/40',
   solving: 'border-accent-purple/40',
-  qa: 'border-accent-yellow/40',
   done: 'border-accent-green/40',
 };
 

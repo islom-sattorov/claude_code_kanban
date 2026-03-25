@@ -7,7 +7,7 @@ import { Column } from './Column';
 import { AddTaskModal } from './AddTaskModal';
 import clsx from 'clsx';
 
-const COLUMNS: ColumnId[] = ['todo', 'in_progress', 'solving', 'qa', 'done'];
+const COLUMNS: ColumnId[] = ['todo', 'solving', 'done'];
 
 export function KanbanBoard() {
   const { agentTaskId, tasks, fetchTasks, isLoading } = useBoardStore();
