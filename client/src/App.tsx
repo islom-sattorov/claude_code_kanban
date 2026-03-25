@@ -5,16 +5,25 @@ import { LogPanel } from './components/LogPanel';
 import { useSSE } from './hooks/useSSE';
 import { useBoardStore } from './store/useBoardStore';
 import { useProjectStore } from './store/useProjectStore';
+import { useLogStore } from './store/useLogStore';
 
 export default function App() {
   useSSE();
-  const { fetchTasks } = useBoardStore();
+  const { fetchTasks, tasks } = useBoardStore();
   const { fetchProjects, activeProjectId } = useProjectStore();
+  const { addEntry } = useLogStore();
 
   useEffect(() => {
+    addEntry({ id: crypto.randomUUID(), timestamp: new Date().toISOString(), level: 'info', message: 'App initialized' });
     fetchProjects();
     fetchTasks();
   }, []);
+
+  useEffect(() => {
+    if (tasks.length > 0) {
+      addEntry({ id: crypto.randomUUID(), timestamp: new Date().toISOString(), level: 'success', message: `Loaded ${tasks.length} task${tasks.length !== 1 ? 's' : ''}` });
+    }
+  }, [tasks.length]);
 
   useEffect(() => {
     fetchTasks(activeProjectId ?? undefined);
