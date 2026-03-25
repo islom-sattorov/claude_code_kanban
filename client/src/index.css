@@ -116,6 +116,8 @@
     border: 1px solid rgba(61, 61, 82, 0.5);
     border-radius: var(--radius-card);
     box-shadow: var(--shadow-card);
+    padding: 14px 16px;
+    margin-bottom: 2px;
     transition: transform 0.2s var(--ease-spring), box-shadow 0.25s ease;
   }
 
