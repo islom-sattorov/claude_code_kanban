@@ -30,15 +30,25 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      PORT:         "3001"
-      DATABASE_URL: postgres://kanban:kanban@postgres:5432/ai_kanban
-    env_file:
-      - .env
+      PORT:              "3001"
+      DATABASE_URL:      postgres://kanban:kanban@postgres:5432/ai_kanban
+      # GitHub config is managed through the UI and persisted in the database.
+      # Uncomment these only if you want bootstrap defaults on the very first run:
+      # GITHUB_PAT:        ""
+      # GITHUB_REPO_OWNER: ""
+      # GITHUB_REPO_NAME:  ""
+      # GITHUB_BASE_BRANCH: main
+      AGENT_CONCURRENCY: "1"
+      CLAUDE_MAX_TURNS:  "10"
+      CLAUDE_TIMEOUT_MS: "120000"
     volumes:
-      # Claude Code auth credentials (run `claude login` on the host first)
-      - ${HOME}/.claude:/root/.claude:ro
-      # Cloned target repository — persists across restarts
+      # Claude Code needs both the directory AND the .claude.json file, writable
+      - ${HOME}/.claude:/root/.claude
+      - ${HOME}/.claude.json:/root/.claude.json
+      # Legacy single repo — persists across restarts
       - repo_data:/repo
+      # Multi-project repos — each project cloned under ./repos/{projectId} on the host
+      - ./repos:/repos
 
   # ─── Frontend (React → nginx) ─────────────────────────────────────────────
   client:

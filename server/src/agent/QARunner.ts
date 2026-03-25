@@ -3,7 +3,7 @@ import { runClaudeCode } from '../claude/claudeCodeRunner';
 import { getConfig } from '../routes/config';
 import { v4 as uuidv4 } from 'uuid';
 
-export async function runQA(task: Task, filesChanged: string[]): Promise<QAItem[]> {
+export async function runQA(task: Task, filesChanged: string[], cwd?: string): Promise<QAItem[]> {
   const config = getConfig();
 
   const qaPrompt = `You are a QA engineer. The following files were changed: ${filesChanged.join(', ')}
@@ -22,7 +22,7 @@ Do NOT include markdown fences. Output valid JSON only.`;
 
   const result = await runClaudeCode({
     prompt: qaPrompt,
-    cwd: config.repoPath,
+    cwd: cwd || config.repoPath,
     allowedTools: ['Read', 'Bash(npm run build)', 'Bash(npx tsc *)', 'Bash(npm test *)'],
     maxTurns: 8,
     outputFormat: 'json',

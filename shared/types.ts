@@ -7,6 +7,16 @@ export interface QAItem {
   detail?: string;
 }
 
+export interface Project {
+  id: string;
+  name: string;
+  repoUrl: string;
+  localPath: string;
+  branch: string;
+  cloned: boolean;
+  createdAt: string;
+}
+
 export interface Task {
   id: string;
   title: string;
@@ -15,6 +25,7 @@ export interface Task {
   column: ColumnId;
   progress: number; // 0-100
   qaItems: QAItem[];
+  projectId?: string;
   prNumber?: number;
   prUrl?: string;
   error?: string;
@@ -24,10 +35,6 @@ export interface Task {
 
 export interface Config {
   githubPat: string;
-  repoOwner: string;
-  repoName: string;
-  repoPath: string;
-  baseBranch: string;
 }
 
 export type SSEEventType =

@@ -4,14 +4,21 @@ import { KanbanBoard } from './components/KanbanBoard';
 import { LogPanel } from './components/LogPanel';
 import { useSSE } from './hooks/useSSE';
 import { useBoardStore } from './store/useBoardStore';
+import { useProjectStore } from './store/useProjectStore';
 
 export default function App() {
   useSSE();
   const { fetchTasks } = useBoardStore();
+  const { fetchProjects, activeProjectId } = useProjectStore();
 
   useEffect(() => {
+    fetchProjects();
     fetchTasks();
   }, []);
+
+  useEffect(() => {
+    fetchTasks(activeProjectId ?? undefined);
+  }, [activeProjectId]);
 
   return (
     <div className="flex flex-col h-screen bg-dark-900 overflow-hidden">

@@ -6,9 +6,9 @@ dotenv.config();
 import tasksRouter from './routes/tasks';
 import configRouter from './routes/config';
 import sseRouter from './routes/sse';
-import { getConfig } from './routes/config';
+import projectsRouter from './routes/projects';
+import { loadConfig } from './routes/config';
 import { initDb } from './store/db';
-import { cloneOrPull, isRepoCloned } from './git/repoManager';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -19,34 +19,20 @@ app.use(express.json());
 app.use('/api/tasks', tasksRouter);
 app.use('/api/config', configRouter);
 app.use('/api/sse', sseRouter);
+app.use('/api/projects', projectsRouter);
 
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
 async function start(): Promise<void> {
-  // 1. Database
+  // 1. Database + persisted config
   await initDb();
+  await loadConfig();
 
-  // 2. Clone / pull repo (skip if GitHub is not yet configured)
-  const { repoOwner, repoName } = getConfig();
-  if (repoOwner && repoName) {
-    try {
-      cloneOrPull();
-    } catch (err) {
-      console.warn(`Could not clone repo: ${(err as Error).message}`);
-      console.warn('Set GITHUB_REPO_OWNER / GITHUB_REPO_NAME and use POST /api/config/clone to retry.');
-    }
-  } else {
-    console.warn('No repo configured. Use the UI to set GitHub details then click "Clone Repo".');
-  }
-
-  // 3. Listen
+  // 2. Listen
   app.listen(PORT, () => {
     console.log(`AI Kanban server running on http://localhost:${PORT}`);
-    if (isRepoCloned()) {
-      console.log('Repository ready at /repo');
-    }
   });
 }
 

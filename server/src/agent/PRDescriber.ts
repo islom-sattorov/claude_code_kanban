@@ -7,7 +7,7 @@ export interface PRDescription {
   body: string;
 }
 
-export async function describePR(task: Task, filesChanged: string[], rationale: string, qaItems: QAItem[]): Promise<PRDescription> {
+export async function describePR(task: Task, filesChanged: string[], rationale: string, qaItems: QAItem[], cwd?: string): Promise<PRDescription> {
   const config = getConfig();
 
   const prPrompt = `Generate a GitHub pull request description for this change.
@@ -25,7 +25,7 @@ Do NOT include markdown fences. Output valid JSON only.`;
 
   const result = await runClaudeCode({
     prompt: prPrompt,
-    cwd: config.repoPath,
+    cwd: cwd || config.repoPath,
     allowedTools: ['Read'],
     maxTurns: 3,
     outputFormat: 'json',

@@ -3,11 +3,11 @@ FROM node:22-slim AS builder
 
 WORKDIR /app
 
-COPY package.json package-lock.json ./
+COPY package.json ./
 COPY shared/ ./shared/
 COPY client/package.json ./client/
 
-RUN npm install --workspace=client
+RUN npm install
 
 COPY client/ ./client/
 

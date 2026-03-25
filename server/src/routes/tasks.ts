@@ -8,18 +8,19 @@ interface IdParam { id: string }
 
 const router = Router();
 
-router.get('/', async (_req: Request, res: Response) => {
-  const tasks = await taskStore.getAll();
+router.get('/', async (req: Request, res: Response) => {
+  const projectId = req.query.projectId as string | undefined;
+  const tasks = await taskStore.getAll(projectId);
   res.json(tasks);
 });
 
 router.post('/', async (req: Request, res: Response) => {
-  const { title, description, tags } = req.body;
+  const { title, description, tags, projectId } = req.body;
   if (!title) {
     res.status(400).json({ error: 'Title is required' });
     return;
   }
-  const task = await taskStore.create({ title, description, tags: tags || [] });
+  const task = await taskStore.create({ title, description, tags: tags || [], projectId });
   sseEmitter.broadcast({ type: 'task:created', payload: task });
   res.status(201).json(task);
 });

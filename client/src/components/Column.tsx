@@ -1,15 +1,74 @@
 import React from 'react';
+import {
+  ClipboardList, Zap, Brain, Search, CheckCircle2, Inbox
+} from 'lucide-react';
 import { ColumnId } from '../../../shared/types';
 import { useBoardStore } from '../store/useBoardStore';
 import { Card } from './Card';
 import clsx from 'clsx';
 
-const COLUMN_META: Record<ColumnId, { label: string; icon: string; color: string; glowColor: string }> = {
-  todo: { label: 'TODO', icon: '\u{1F4CB}', color: 'text-dark-300', glowColor: '' },
-  in_progress: { label: 'In Progress', icon: '\u{26A1}', color: 'text-accent-blue', glowColor: 'border-accent-blue/40' },
-  solving: { label: 'Solving', icon: '\u{1F9E0}', color: 'text-accent-purple', glowColor: 'border-accent-purple/40' },
-  qa: { label: 'QA', icon: '\u{1F50D}', color: 'text-accent-yellow', glowColor: 'border-accent-yellow/40' },
-  done: { label: 'Done', icon: '\u{2705}', color: 'text-accent-green', glowColor: 'border-accent-green/40' },
+const COLUMN_META: Record<ColumnId, {
+  label: string;
+  icon: React.ReactNode;
+  accentColor: string;
+  badgeBg: string;
+  badgeText: string;
+  emptyIcon: React.ReactNode;
+  emptyText: string;
+}> = {
+  todo: {
+    label: 'TODO',
+    icon: <ClipboardList className="w-4 h-4" />,
+    accentColor: 'bg-dark-500',
+    badgeBg: 'bg-dark-600',
+    badgeText: 'text-dark-400',
+    emptyIcon: <Inbox className="w-8 h-8 text-dark-500" />,
+    emptyText: 'Add tasks to get started',
+  },
+  in_progress: {
+    label: 'In Progress',
+    icon: <Zap className="w-4 h-4" />,
+    accentColor: 'bg-accent-blue',
+    badgeBg: 'bg-accent-blue/15',
+    badgeText: 'text-accent-blue',
+    emptyIcon: <Zap className="w-8 h-8 text-dark-500" />,
+    emptyText: 'Tasks being picked up',
+  },
+  solving: {
+    label: 'Solving',
+    icon: <Brain className="w-4 h-4" />,
+    accentColor: 'bg-accent-purple',
+    badgeBg: 'bg-accent-purple/15',
+    badgeText: 'text-accent-purple',
+    emptyIcon: <Brain className="w-8 h-8 text-dark-500" />,
+    emptyText: 'AI is working on it',
+  },
+  qa: {
+    label: 'QA',
+    icon: <Search className="w-4 h-4" />,
+    accentColor: 'bg-accent-yellow',
+    badgeBg: 'bg-accent-yellow/15',
+    badgeText: 'text-accent-yellow',
+    emptyIcon: <Search className="w-8 h-8 text-dark-500" />,
+    emptyText: 'Awaiting verification',
+  },
+  done: {
+    label: 'Done',
+    icon: <CheckCircle2 className="w-4 h-4" />,
+    accentColor: 'bg-accent-green',
+    badgeBg: 'bg-accent-green/15',
+    badgeText: 'text-accent-green',
+    emptyIcon: <CheckCircle2 className="w-8 h-8 text-dark-500" />,
+    emptyText: 'Completed tasks',
+  },
+};
+
+const COLUMN_GLOW: Record<ColumnId, string> = {
+  todo: '',
+  in_progress: 'border-accent-blue/40',
+  solving: 'border-accent-purple/40',
+  qa: 'border-accent-yellow/40',
+  done: 'border-accent-green/40',
 };
 
 interface Props {
@@ -18,25 +77,28 @@ interface Props {
 }
 
 export function Column({ columnId, isActive }: Props) {
-  const { getTasksByColumn, agentTaskId } = useBoardStore();
+  const { getTasksByColumn, agentTaskId, agentRunning } = useBoardStore();
   const tasks = getTasksByColumn(columnId);
   const meta = COLUMN_META[columnId];
 
   return (
     <div className={clsx(
-      'flex flex-col min-w-[280px] max-w-[280px] bg-dark-800 rounded-2xl border transition-all duration-300',
-      isActive ? `${meta.glowColor} shadow-lg column-active` : 'border-dark-600',
+      'flex flex-col min-w-[280px] max-w-[280px] bg-dark-800 rounded-2xl border transition-all duration-300 overflow-hidden',
+      isActive ? `${COLUMN_GLOW[columnId]} shadow-lg column-active` : 'border-dark-600',
       'h-full'
     )}>
+      {/* Top accent bar */}
+      <div className={clsx('h-[2px] w-full', meta.accentColor)} />
+
       {/* Column header */}
       <div className="flex items-center justify-between px-4 py-3.5 border-b border-dark-600">
         <div className="flex items-center gap-2">
-          <span className="text-base">{meta.icon}</span>
-          <span className={clsx('text-sm font-semibold', meta.color)}>{meta.label}</span>
+          <span className={meta.badgeText}>{meta.icon}</span>
+          <span className={clsx('text-sm font-semibold', meta.badgeText)}>{meta.label}</span>
         </div>
         <span className={clsx(
           'text-xs font-bold px-2 py-0.5 rounded-full',
-          isActive ? 'bg-accent-purple/20 text-accent-purple' : 'bg-dark-600 text-dark-400'
+          isActive ? `${meta.badgeBg} ${meta.badgeText}` : 'bg-dark-600 text-dark-400'
         )}>
           {tasks.length}
         </span>
@@ -45,8 +107,14 @@ export function Column({ columnId, isActive }: Props) {
       {/* Cards */}
       <div className="flex-1 overflow-y-auto p-3 space-y-3 min-h-0">
         {tasks.length === 0 ? (
-          <div className="flex items-center justify-center h-24 text-xs text-dark-500 italic">
-            No tasks
+          <div className={clsx(
+            'flex flex-col items-center justify-center gap-2 h-32 rounded-xl border border-dashed transition-all',
+            !agentRunning
+              ? 'border-dark-500 animate-pulse'
+              : 'border-dark-600'
+          )}>
+            {meta.emptyIcon}
+            <span className="text-xs text-dark-500 text-center px-4">{meta.emptyText}</span>
           </div>
         ) : (
           tasks.map(task => (

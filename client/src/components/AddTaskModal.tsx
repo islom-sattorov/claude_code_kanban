@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { X, Plus, Tag } from 'lucide-react';
+import { X, Plus, Tag, FolderGit2, Play, AlertTriangle } from 'lucide-react';
 import { useBoardStore } from '../store/useBoardStore';
+import { useProjectStore } from '../store/useProjectStore';
 import clsx from 'clsx';
 
 const TAG_OPTIONS = ['frontend', 'backend', 'bug', 'feature', 'refactor', 'docs', 'test', 'perf'];
@@ -20,11 +21,14 @@ interface Props {
 }
 
 export function AddTaskModal({ onClose }: Props) {
-  const { createTask } = useBoardStore();
+  const { createTask, runTask } = useBoardStore();
+  const { activeProjectId, getActiveProject } = useProjectStore();
+  const activeProject = getActiveProject();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [runImmediately, setRunImmediately] = useState(false);
 
   const toggleTag = (tag: string) => {
     setSelectedTags(prev =>
@@ -37,7 +41,26 @@ export function AddTaskModal({ onClose }: Props) {
     if (!title.trim()) return;
     setLoading(true);
     try {
-      await createTask({ title: title.trim(), description: description.trim() || undefined, tags: selectedTags });
+      await createTask({
+        title: title.trim(),
+        description: description.trim() || undefined,
+        tags: selectedTags,
+        projectId: activeProjectId ?? undefined,
+      });
+
+      // If "Run immediately" is checked, get the last created task and run it
+      if (runImmediately) {
+        const { tasks } = useBoardStore.getState();
+        const newTask = tasks.find(t => t.title === title.trim() && t.column === 'todo');
+        if (newTask) {
+          try {
+            await runTask(newTask.id);
+          } catch (err) {
+            console.error('Failed to auto-run task:', err);
+          }
+        }
+      }
+
       onClose();
     } catch (err) {
       console.error(err);
@@ -48,7 +71,7 @@ export function AddTaskModal({ onClose }: Props) {
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-dark-800 border border-dark-600 rounded-2xl w-full max-w-md shadow-2xl">
+      <div className="bg-dark-800 border border-dark-600 rounded-2xl w-full max-w-md shadow-2xl animate-scale-in">
         <div className="flex items-center justify-between p-6 border-b border-dark-600">
           <h2 className="text-lg font-semibold text-white">New Task</h2>
           <button
@@ -60,6 +83,23 @@ export function AddTaskModal({ onClose }: Props) {
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
+          {/* Project context badge */}
+          <div className={clsx(
+            'flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border',
+            activeProject
+              ? 'bg-accent-purple/10 border-accent-purple/30 text-accent-purple'
+              : 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400'
+          )}>
+            {activeProject ? (
+              <FolderGit2 className="w-3.5 h-3.5" />
+            ) : (
+              <AlertTriangle className="w-3.5 h-3.5" />
+            )}
+            <span className="font-medium">
+              {activeProject ? `Creating in: ${activeProject.name}` : 'No project selected -- task will be global'}
+            </span>
+          </div>
+
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-dark-300 uppercase tracking-wider">Task Title *</label>
             <input
@@ -68,7 +108,7 @@ export function AddTaskModal({ onClose }: Props) {
               value={title}
               onChange={e => setTitle(e.target.value)}
               placeholder="e.g. Add dark mode toggle to settings page"
-              className="w-full bg-dark-700 border border-dark-500 rounded-lg px-3 py-2.5 text-sm text-white placeholder-dark-400 focus:outline-none focus:border-accent-purple transition-colors"
+              className="input-field"
             />
           </div>
 
@@ -79,7 +119,7 @@ export function AddTaskModal({ onClose }: Props) {
               onChange={e => setDescription(e.target.value)}
               placeholder="Optional context for the AI agent..."
               rows={3}
-              className="w-full bg-dark-700 border border-dark-500 rounded-lg px-3 py-2.5 text-sm text-white placeholder-dark-400 focus:outline-none focus:border-accent-purple transition-colors resize-none"
+              className="input-field resize-none"
             />
           </div>
 
@@ -107,21 +147,38 @@ export function AddTaskModal({ onClose }: Props) {
             </div>
           </div>
 
+          {/* Run immediately checkbox */}
+          <label className="flex items-center gap-2.5 cursor-pointer group">
+            <div className={clsx(
+              'w-4 h-4 rounded border-2 flex items-center justify-center transition-colors',
+              runImmediately
+                ? 'bg-accent-purple border-accent-purple'
+                : 'border-dark-500 group-hover:border-dark-400'
+            )}>
+              {runImmediately && (
+                <Play className="w-2.5 h-2.5 text-white fill-white" />
+              )}
+            </div>
+            <span className="text-sm text-dark-300 group-hover:text-white transition-colors">
+              Run immediately after creating
+            </span>
+          </label>
+
           <div className="flex gap-3 pt-2">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2.5 rounded-lg border border-dark-500 text-dark-300 hover:text-white hover:border-dark-400 transition-all text-sm"
+              className="btn-ghost flex-1 px-4 py-2.5 text-sm"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={!title.trim() || loading}
-              className="flex-1 px-4 py-2.5 rounded-lg bg-accent-purple text-white font-medium text-sm hover:bg-purple-500 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              className="btn-primary flex-1 px-4 py-2.5 text-sm flex items-center justify-center gap-2 disabled:opacity-50"
             >
               <Plus className="w-4 h-4" />
-              Add Task
+              {runImmediately ? 'Add & Run' : 'Add Task'}
             </button>
           </div>
         </form>

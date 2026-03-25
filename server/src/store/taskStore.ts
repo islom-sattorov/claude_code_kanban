@@ -12,6 +12,7 @@ function rowToTask(row: Record<string, unknown>): Task {
     column:      row.column_name as ColumnId,
     progress:    row.progress as number,
     qaItems:     row.qa_items as Task['qaItems'],
+    projectId:   row.project_id as string | undefined,
     prNumber:    row.pr_number as number | undefined,
     prUrl:       row.pr_url as string | undefined,
     error:       row.error as string | undefined,
@@ -21,7 +22,14 @@ function rowToTask(row: Record<string, unknown>): Task {
 }
 
 export const taskStore = {
-  async getAll(): Promise<Task[]> {
+  async getAll(projectId?: string): Promise<Task[]> {
+    if (projectId) {
+      const { rows } = await pool.query(
+        'SELECT * FROM tasks WHERE project_id = $1 ORDER BY created_at ASC',
+        [projectId]
+      );
+      return rows.map(rowToTask);
+    }
     const { rows } = await pool.query(
       'SELECT * FROM tasks ORDER BY created_at ASC'
     );
@@ -36,12 +44,12 @@ export const taskStore = {
     return rows[0] ? rowToTask(rows[0]) : undefined;
   },
 
-  async create(data: Pick<Task, 'title' | 'description' | 'tags'>): Promise<Task> {
+  async create(data: Pick<Task, 'title' | 'description' | 'tags' | 'projectId'>): Promise<Task> {
     const { rows } = await pool.query(
-      `INSERT INTO tasks (id, title, description, tags)
-       VALUES ($1, $2, $3, $4)
+      `INSERT INTO tasks (id, title, description, tags, project_id)
+       VALUES ($1, $2, $3, $4, $5)
        RETURNING *`,
-      [uuidv4(), data.title, data.description ?? null, data.tags ?? []]
+      [uuidv4(), data.title, data.description ?? null, data.tags ?? [], data.projectId ?? null]
     );
     return rowToTask(rows[0]);
   },

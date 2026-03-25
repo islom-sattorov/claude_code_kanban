@@ -15,8 +15,8 @@ interface BoardState {
   deleteTask: (id: string) => void;
   setAgentRunning: (running: boolean, taskId?: string) => void;
 
-  fetchTasks: () => Promise<void>;
-  createTask: (data: { title: string; description?: string; tags?: string[] }) => Promise<void>;
+  fetchTasks: (projectId?: string) => Promise<void>;
+  createTask: (data: { title: string; description?: string; tags?: string[]; projectId?: string }) => Promise<void>;
   moveTask: (id: string, column: ColumnId) => Promise<void>;
   removeTask: (id: string) => Promise<void>;
   runTask: (id: string) => Promise<void>;
@@ -41,10 +41,10 @@ export const useBoardStore = create<BoardState>((set, get) => ({
   })),
   setAgentRunning: (running, taskId) => set({ agentRunning: running, agentTaskId: taskId || null }),
 
-  fetchTasks: async () => {
+  fetchTasks: async (projectId?: string) => {
     set({ isLoading: true });
     try {
-      const tasks = await tasksApi.getAll();
+      const tasks = await tasksApi.getAll(projectId);
       set({ tasks, isLoading: false });
     } catch (err) {
       set({ error: (err as Error).message, isLoading: false });
@@ -52,8 +52,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
   },
 
   createTask: async (data) => {
-    const task = await tasksApi.create(data);
-    set(state => ({ tasks: [...state.tasks, task] }));
+    await tasksApi.create(data);
   },
 
   moveTask: async (id, column) => {

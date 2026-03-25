@@ -1,55 +1,42 @@
 import { Router, Request, Response } from 'express';
-import { Config } from '../../../shared/types';
 import * as dotenv from 'dotenv';
-import { REPO_PATH, reclone, cloneRepo, isRepoCloned } from '../git/repoManager';
+import { pool } from '../store/db';
 dotenv.config();
 
-let config: Config = {
-  githubPat:  process.env.GITHUB_PAT            || '',
-  repoOwner:  process.env.GITHUB_REPO_OWNER     || '',
-  repoName:   process.env.GITHUB_REPO_NAME      || '',
-  repoPath:   REPO_PATH,                            // always /repo inside the container
-  baseBranch: process.env.GITHUB_BASE_BRANCH    || 'main',
-};
+let githubPat: string = process.env.GITHUB_PAT || '';
 
-export function getConfig(): Config {
-  return config;
+/** Load persisted PAT from DB (called once at startup after initDb). */
+export async function loadConfig(): Promise<void> {
+  const { rows } = await pool.query("SELECT value FROM config WHERE key = 'githubPat'");
+  if (rows[0]) githubPat = rows[0].value;
+}
+
+async function persistPat(): Promise<void> {
+  await pool.query(
+    `INSERT INTO config (key, value) VALUES ('githubPat', $1)
+     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
+    [githubPat]
+  );
+}
+
+export function getConfig() {
+  return { githubPat };
 }
 
 const router = Router();
 
 router.get('/', (_req: Request, res: Response) => {
-  res.json({
-    repoOwner:  config.repoOwner,
-    repoName:   config.repoName,
-    baseBranch: config.baseBranch,
-    hasPat:     !!config.githubPat,
-    repoCloned: isRepoCloned(),
-  });
+  res.json({ hasPat: !!githubPat });
 });
 
-router.put('/', (req: Request, res: Response) => {
-  const { githubPat, repoOwner, repoName, baseBranch } = req.body;
-  if (repoOwner   !== undefined) config.repoOwner   = repoOwner;
-  if (repoName    !== undefined) config.repoName    = repoName;
-  if (baseBranch  !== undefined) config.baseBranch  = baseBranch;
-  if (githubPat   !== undefined) config.githubPat   = githubPat;
-  config.repoPath = REPO_PATH; // always fixed
-  res.json({ success: true });
-});
-
-// Trigger a fresh clone (or re-clone) of the configured repository
-router.post('/clone', async (_req: Request, res: Response) => {
-  try {
-    if (isRepoCloned()) {
-      reclone();
-    } else {
-      cloneRepo();
-    }
-    res.json({ success: true, message: 'Repository cloned successfully' });
-  } catch (err) {
-    res.status(500).json({ error: (err as Error).message });
+router.put('/', async (req: Request, res: Response) => {
+  const { githubPat: newPat } = req.body;
+  // Only update if a non-empty value was provided
+  if (newPat && newPat.trim()) {
+    githubPat = newPat.trim();
+    await persistPat();
   }
+  res.json({ success: true });
 });
 
 export default router;

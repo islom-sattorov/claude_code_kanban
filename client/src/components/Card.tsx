@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   Play, ExternalLink, CheckCircle, XCircle, Clock,
-  AlertTriangle, Trash2, ChevronDown, ChevronUp
+  AlertTriangle, Trash2, ChevronDown, ChevronUp, GitMerge, RotateCcw
 } from 'lucide-react';
 import { Task, QAItem } from '../../../shared/types';
 import { useBoardStore } from '../store/useBoardStore';
@@ -18,19 +18,17 @@ const TAG_COLORS: Record<string, string> = {
   perf: 'bg-pink-500/20 text-pink-400 border-pink-500/30',
 };
 
+const STATUS_BORDER_COLORS: Record<string, string> = {
+  todo: 'border-l-dark-500',
+  in_progress: 'border-l-accent-blue',
+  solving: 'border-l-accent-purple',
+  qa: 'border-l-accent-yellow',
+  done: 'border-l-accent-green',
+};
+
 interface Props {
   task: Task;
   isActive: boolean;
-}
-
-function ThinkingDots() {
-  return (
-    <div className="flex items-center gap-1 mt-1">
-      <span className="thinking-dot" />
-      <span className="thinking-dot" />
-      <span className="thinking-dot" />
-    </div>
-  );
 }
 
 function QAItemRow({ item }: { item: QAItem }) {
@@ -56,6 +54,8 @@ export function Card({ task, isActive }: Props) {
   const { runTask, removeTask, agentRunning } = useBoardStore();
   const [showQA, setShowQA] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [showProgress, setShowProgress] = useState(false);
 
   const isThinking = isActive && (task.column === 'solving' || task.column === 'qa');
   const hasQA = task.qaItems.length > 0;
@@ -71,44 +71,73 @@ export function Card({ task, isActive }: Props) {
 
   const handleDelete = async () => {
     if (agentRunning && isActive) return;
+    if (!confirmDelete) {
+      setConfirmDelete(true);
+      return;
+    }
     setDeleting(true);
     try {
       await removeTask(task.id);
     } catch {
       setDeleting(false);
+      setConfirmDelete(false);
     }
   };
 
   return (
     <div className={clsx(
-      'bg-dark-700 border rounded-xl p-4 space-y-3 transition-all duration-300 group',
-      isActive ? 'border-accent-purple/60 shadow-lg shadow-accent-purple/10' : 'border-dark-500',
-      task.error ? 'border-red-500/40' : '',
-      deleting ? 'opacity-50' : ''
+      'card border-l-[3px] space-y-3 transition-all duration-300 group',
+      STATUS_BORDER_COLORS[task.column] || 'border-l-dark-500',
+      isThinking && 'card-active',
+      task.error && 'card-error',
+      deleting && 'opacity-50'
     )}>
       {/* Header */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-white leading-snug">{task.title}</p>
-          <p className="text-xs text-dark-400 mt-0.5 font-mono">#{task.id.slice(0, 8)}</p>
+          {task.description && (
+            <p className="text-xs text-dark-400 mt-1 line-clamp-2 leading-relaxed">
+              {task.description}
+            </p>
+          )}
+          <p className="text-xs text-dark-500 mt-0.5 font-mono">#{task.id.slice(0, 8)}</p>
         </div>
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="flex items-center gap-1">
           {task.column === 'todo' && !agentRunning && (
             <button
               onClick={handleRun}
-              className="p-1.5 rounded-lg bg-accent-purple/20 text-accent-purple hover:bg-accent-purple/30 transition-colors"
+              className="p-1.5 rounded-lg bg-accent-purple/20 text-accent-purple hover:bg-accent-purple/30 transition-colors opacity-30 group-hover:opacity-100"
               title="Run with AI"
             >
               <Play className="w-3.5 h-3.5" />
             </button>
           )}
-          <button
-            onClick={handleDelete}
-            disabled={deleting || (agentRunning && isActive)}
-            className="p-1.5 rounded-lg text-dark-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
+          {confirmDelete ? (
+            <div className="flex items-center gap-1">
+              <button
+                onClick={handleDelete}
+                disabled={deleting || (agentRunning && isActive)}
+                className="px-2 py-1 rounded-lg text-xs font-medium bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30 transition-colors"
+              >
+                Sure?
+              </button>
+              <button
+                onClick={() => setConfirmDelete(false)}
+                className="px-2 py-1 rounded-lg text-xs text-dark-400 hover:text-white bg-dark-600 transition-colors"
+              >
+                No
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={handleDelete}
+              disabled={deleting || (agentRunning && isActive)}
+              className="p-1.5 rounded-lg text-dark-400 hover:text-red-400 hover:bg-red-500/10 transition-colors opacity-0 group-hover:opacity-100"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       </div>
 
@@ -126,13 +155,28 @@ export function Card({ task, isActive }: Props) {
         </div>
       )}
 
-      {/* Thinking animation */}
-      {isThinking && <ThinkingDots />}
+      {/* Thinking animation — animated gradient border sweep */}
+      {isThinking && (
+        <div className="relative h-1 rounded-full overflow-hidden bg-dark-600">
+          <div className="absolute inset-0 bg-gradient-to-r from-accent-purple via-accent-blue to-accent-purple bg-[length:200%_100%] animate-shimmer rounded-full" />
+        </div>
+      )}
 
       {/* Progress bar */}
       {task.progress > 0 && (
-        <div className="progress-bar">
-          <div className="progress-fill" style={{ width: `${task.progress}%` }} />
+        <div
+          className="relative group/progress"
+          onMouseEnter={() => setShowProgress(true)}
+          onMouseLeave={() => setShowProgress(false)}
+        >
+          <div className="progress-bar">
+            <div className="progress-fill" style={{ width: `${task.progress}%` }} />
+          </div>
+          {showProgress && (
+            <span className="absolute -top-6 left-1/2 -translate-x-1/2 text-[10px] font-mono bg-dark-600 text-dark-200 px-1.5 py-0.5 rounded shadow-lg whitespace-nowrap">
+              {task.progress}%
+            </span>
+          )}
         </div>
       )}
 
@@ -154,13 +198,18 @@ export function Card({ task, isActive }: Props) {
             {showQA ? <ChevronUp className="w-3 h-3 ml-auto" /> : <ChevronDown className="w-3 h-3 ml-auto" />}
           </button>
 
-          {showQA && (
-            <div className="mt-2 pl-1 border-l border-dark-500 space-y-0.5">
+          <div
+            className={clsx(
+              'overflow-hidden transition-all duration-300 ease-spring',
+              showQA ? 'max-h-96 opacity-100 mt-2' : 'max-h-0 opacity-0'
+            )}
+          >
+            <div className="pl-1 border-l border-dark-500 space-y-0.5">
               {task.qaItems.map(item => (
                 <QAItemRow key={item.id} item={item} />
               ))}
             </div>
-          )}
+          </div>
         </div>
       )}
 
@@ -172,17 +221,28 @@ export function Card({ task, isActive }: Props) {
           rel="noopener noreferrer"
           className="flex items-center gap-1.5 text-xs bg-green-500/15 text-green-400 border border-green-500/30 rounded-lg px-2.5 py-1.5 hover:bg-green-500/25 transition-colors w-fit"
         >
-          <CheckCircle className="w-3.5 h-3.5" />
-          <span className="font-medium">PR #{task.prNumber}</span>
+          <GitMerge className="w-3.5 h-3.5" />
+          <span className="font-medium">View PR #{task.prNumber}</span>
           <ExternalLink className="w-3 h-3" />
         </a>
       )}
 
       {/* Error */}
       {task.error && (
-        <div className="flex items-start gap-2 text-xs bg-red-500/10 border border-red-500/20 rounded-lg p-2.5">
-          <AlertTriangle className="w-3.5 h-3.5 text-red-400 flex-shrink-0 mt-0.5" />
-          <span className="text-red-300">{task.error}</span>
+        <div className="space-y-2">
+          <div className="flex items-start gap-2 text-xs bg-red-500/10 border border-red-500/20 rounded-lg p-2.5">
+            <AlertTriangle className="w-3.5 h-3.5 text-red-400 flex-shrink-0 mt-0.5" />
+            <span className="text-red-300">{task.error}</span>
+          </div>
+          {task.column === 'todo' && !agentRunning && (
+            <button
+              onClick={handleRun}
+              className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-red-500/15 border border-red-500/30 text-red-400 hover:bg-red-500/25 transition-colors"
+            >
+              <RotateCcw className="w-3 h-3" />
+              Retry
+            </button>
+          )}
         </div>
       )}
     </div>

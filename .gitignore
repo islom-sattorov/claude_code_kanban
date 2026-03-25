@@ -3,3 +3,5 @@ package-lock.json
 node_modules
 .env
 .env.example
+# Cloned project repos (bind-mounted from Docker)
+repos/
