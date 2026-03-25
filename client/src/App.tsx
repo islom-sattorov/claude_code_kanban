@@ -7,6 +7,7 @@ import { useBoardStore } from './store/useBoardStore';
 import { useProjectStore } from './store/useProjectStore';
 
 export default function App() {
+  console.log('App rendered');
   useSSE();
   const { fetchTasks } = useBoardStore();
   const { fetchProjects, activeProjectId } = useProjectStore();
